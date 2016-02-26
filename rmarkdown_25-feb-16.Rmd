@@ -1,0 +1,116 @@
+---
+title: "Dissertation Work, 25-26 February 2016"
+author: "Jessica L. H. Doyle"
+date: "February 26, 2016"
+output: html_document
+---
+
+This document is to show all the work I've been doing lately (late February 2016) while looking at the 2007 PUMS data from the [SBO (Survey of Business Owners)](http://www.census.gov/econ/sbo) for my dissertation proposal.
+
+This is mostly for future reference and is not meant to serve as an example to emulate. I am an R n00b. Proceed with caution.
+
+First, grabbing the data and converting it into something I can use:
+
+```{r, results = "hide"}
+setwd("/home/jessica/r_today")
+download.file("http://www2.census.gov/econ/sbo/07/pums/pums_csv.zip", "/home/jessica/Desktop/pums_csv.zip")
+unzip("/home/jessica/Desktop/pums_csv.zip", exdir = "/home/jessica/r_today/")
+sbo_pums_07_whole_thing <- read.csv("/home/jessica/r_today/pums.csv")
+```
+
+at this point we have a large and unwieldy dataset:
+
+```{r}
+dim(sbo_pums_07_whole_thing)
+```
+
+the thing is, I'm interested in the racial and/or ethnic identification of the owner(s). To make sure I'm working with owners who actually are involved with the business. So I'm going to work with the variable HOURS1, which is the number of hours per week spent managing or working by the first owner. (The same variables for the second, third, and fourth listed owner are HOURS2, HOURS3, HOURS4, respectively.) The coding for HOURS1 is:
+
+0 = Not reported
+1 = No hours
+2 = Less than 20 hours per week
+3 = 20 to 39 hours per week
+4 = 40 hours per week
+5 = 41 to 59 hours per week
+6 = 60 or more hours per week
+
+Here I'm selecting out all those where the first owner didn't report working hours or reported no hours worked.
+
+```{r, results = "hide"}
+first_owner_hours_worked <- subset(sbo_pums_07_whole_thing, !(sbo_pums_07_whole_thing$HOURS1 == 0 | sbo_pums_07_whole_thing$HOURS1 == 1))
+```
+
+That eliminated nearly a million observations:
+
+```{r}
+nrow(sbo_pums_07_whole_thing) - nrow(first_owner_hours_worked)
+```
+
+This is where I start losing reproducibility, since I'm still not very good at creating usable tables and charts in R itself. So what I do is split the data into four categories:
+1. first owner identifies as Hispanic or Latino;
+2. first owner identifies as white (not Latino);
+3. first owner identifies as Asian (not Latino);
+4. first owner identifies as black (not Latino).
+
+```{r, results = "hide"}
+latino_first_owner <- subset(first_owner_hours_worked, first_owner_hours_worked$ETH1 == "H")
+white_first_owner <- subset(first_owner_hours_worked, (first_owner_hours_worked$RACE1 == "W" & first_owner_hours_worked$ETH1 == "N"))
+asian_first_owner <- subset(first_owner_hours_worked, (first_owner_hours_worked$RACE1 == "A" & first_owner_hours_worked$ETH1 == "N"))
+black_first_owner <- subset(first_owner_hours_worked, (first_owner_hours_worked$RACE1 == "B" & first_owner_hours_worked$ETH1 == "N"))
+```
+
+Someone more versed in R would be able to work with the big file and not have to split it up. I am not that person yet.
+
+Okay, let's look at something interesting -- say, family-owned businesses. The way I've been doing it is using the "table" function to get row summary counts, e.g.:
+
+```{r}
+table(black_first_owner$FAMILYBUS)
+```
+
+where 0 = not reported, 1 = yes, it is a family business; 2 = it is not.
+
+I run that table for all four categories and then combine them into a separate table in Excel, because n00b.
+
+Another thing I'm curious about is whether Latino business owners are more or less likely to use Spanish in their business transactions depending on their age:
+
+```{r}
+tapply(latino_first_owner$SPANISH, latino_first_owner$AGE1, table)
+```
+
+oh and also going back to that earlier subset to find out whether there are differences in Latino and non-Latino reliance on exports:
+
+```{r}
+tapply(first_owner_hours_worked$EXPORTS, first_owner_hours_worked$ETH1, table)
+```
+
+(in that one "H" = Hispanic or Latino, "N" = not Hispanic or Latino, and the 0-9 are code for percentage of total sales that come from exports:
+
+0 not reported
+1 no sales from exports
+2 less than 1% of sales from exports
+3 1% to 4%
+4 5% to 9%
+5 10% to 19%
+6 20% to 49%
+7 50% to 99%
+8 100%
+9 don't know)
+
+Finally let's actually use the aggregate command to see if there's a difference in businesses that operated less than 40 hours per week between Latinos and non-Latinos:
+
+```{r}
+aggregate(first_owner_hours_worked$LT40HOURS, by = list(first_owner_hours_worked$ETH1), table)
+```
+
+(again, 0 = not reported, 1 = yes [operated less than 40 hours per week], 2 = no.)
+
+and then see if there's a difference between Latino-owned businesses and all businesses that did not require startup capital (the variable SCNONENEEDED) in terms of whether the business operated for 40 hours a week or fewer:
+
+```{r}
+aggregate(latino_first_owner$LT40HOURS, by = list(latino_first_owner$SCNONENEEDED), table)
+aggregate(first_owner_hours_worked$LT40HOURS, by = list(first_owner_hours_worked$SCNONENEEDED), table)
+```
+
+I ran the percentages in Excel, and it looks like fewer Latino-owned businesses reported operating for 40 or more hours a week, whether or not they started out needing startup capital.
+
+That concludes the calculations for today.
