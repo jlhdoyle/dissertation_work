@@ -1,0 +1,53 @@
+---
+title: 'Dissertation Work: Analyzing Latino-Owned Businesses at the National Level'
+author: "Jessica L. H. Doyle"
+date: "October 3, 2016"
+output: html_document
+---
+
+## Learning About Latino-Owned Businesses at the National Level
+
+One of the hypotheses I'm testing in my dissertation concerns what I'll informally call shared human capital. In other words, if a given ethnic community (in this case, Latinos/Latinas/Latinxs) has within it a group of co-ethnics who can operate business which require a larger amount of human capital (financial and professional services, say), then the business community _as a whole_ will benefit, and those benefits will produce the concrete and measurable effects of higher revenues and greater number of employees hired. But in order to test this, I need to know:
+
+1. What industries require larger amounts of human capital?
+2. What percentage of Latinos/as/xs start businesses in those industries nationwide?
+3. How do percentages of Latino/a/x (hereafter Latino) business formation differ in our study areas (MSAs and states) from the national trend?
+
+And so here are the initial steps I'm going to take:
+
+1. Look at Latino-owned businesses by industry at the national level to be able to describe, very broadly, how many Latinos are in business for themselves, and in what industries.
+2. Look at industries by share of owners with a bachelor's degree in order to be able to classify industries as higher- or lower-skill.
+
+The first part of my work here will be to get the descriptive national-level data.
+
+I will be using the 2012 Survey of Business Owners (hereafter SBO), data file SB12CSA01, with 2,856 rows selected for national-level data. I downloaded the file from [http://factfinder.census.gov/bkmk/table/1.0/en/SBO/2012/00CSA01/0100000US](http://factfinder.census.gov/bkmk/table/1.0/en/SBO/2012/00CSA01/0100000US) on 3 October 16.
+
+So the first thing I do is load up and view the data:
+```{r loading}
+SBO_2007_CSA01_national <- read.csv("/home/jessica/Documents/dissertation_Fei/data_storage/SBO_2012/SBO_2012_00CSA01_by_NATION/SBO_2012_00CSA01_with_ann.csv")
+```
+
+(There's a typo in there.)
+
+Then I'm going to pull all the Latino data out into a separate table, which I do for using the numerical code that corresponds to "Hispanic or Latino". Since I'm not interested at looking at differences by race or gender just yet, I'll use the codes that correspond to "All firms" for both of those categories. 
+```{r select_out_latino}
+SBO_2012_lat_by_industry <- subset(SBO_2007_CSA01_national, ETH_GROUP.id == "020" & SEX.id == "001" & RACE_GROUP.id == "00")
+View(SBO_2012_lat_by_industry)
+```
+
+That gives me a table with 21 observations of 28 variables.
+
+I can do the same thing for non-Latino business owners:
+```{r select_out_nonlatino)}
+SBO_2012_nonlat_by_industry <- subset(SBO_2007_CSA01_national, ETH_GROUP.id == "029" & SEX.id == "001" & RACE_GROUP.id == "00")
+View(SBO_2012_nonlat_by_industry)
+```
+
+At this point, if I were skilled in doing graphics in R, I'd input the commands to do a bar graph here. Since I'm not, I'm going to port out .csv files in order to study the results in Excel/OOCalc.
+
+```{r port_out}
+write.csv(SBO_2012_lat_by_industry, "/home/jessica/Documents/dissertation_Fei/calculations/SBO_2012_latino_owners_by_industry.csv")
+write.csv(SBO_2012_nonlat_by_industry, "/home/jessica/Documents/dissertation_Fei/calculations/SBO_2012_nonlatino_owners_by_industry.csv")
+```
+
+Now I have some preliminary results as to which industries Latinos are most likely to concentrate in. But part of my analysis talks about "high-skills" industries. The proxy I'm using for that is greater concentration of business owners in an industry with a bachelor's degree or higher. Since the dataset I'm working with here (SBO12CSA01) doesn't have that information, I'm going to stop this R Markdown document here and pick up later with a different dataset.
