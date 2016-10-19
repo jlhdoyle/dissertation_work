@@ -1,0 +1,126 @@
+---
+title: "Classifying Industries by Educational Attainment of Business Owners"
+author: "Jessica L. H. Doyle"
+date: "October 18, 2016"
+output: html_document
+---
+
+One of the questions of my research is whether more co-ethnics (Latinos, in this case) who have founded businesses in "high-skills" industries mean greater performance for co-ethnic business owners overall. In order to do that, I need to be able to classify particular industries as high- or low-skill, i.e. by the amount of human capital owners in those industries usually have.
+
+Liu (2011) classified occupations by high- or low-skill using Decennial Census and American Community Survey data, but: one, she chose to classify occupations, rather than industries; and, two, she was focusing on employees, not owners. To classify industries by the educational attainment of the *owner* (educational attainment being a common proxy for human capital acquired or skills learned), I will use 2007 SBO PUMS data. Here I will lay out the process I use to extract and sort the relevant information from the data.
+
+First, I load the data:
+
+```{r load SBO data}
+SBO_PUMS_2007_ALL <- read.csv("/home/jessica/Documents/dissertation_Fei/data_storage/SBO_PUMS_2007/pums.csv")
+View(SBO_PUMS_2007_ALL)
+```
+
+The SBO PUMS includes information on up to four owners, with the owner with the largest share of the business listed first. To make sure I am only looking at owners who have a majority stake in their businesses, I select out those businesses where the variable *First owner's share of the business* (PCT1) is equal to or greater than 50, meaning the first owner has 50% or more of a share.
+
+```{r majority owners}
+SBO_PUMS_1STOWNER50 <- subset(SBO_PUMS_2007_ALL, PCT1 >= 50)
+View(SBO_PUMS_1STOWNER50)
+```
+
+(At this point I remove the data frame covering the entire SBO from my workspace, because my computer is sloooooow; but that's optional.)
+
+This reduces the original sample of about 2.6 million observations to 2 million observations. However, not all of those observations include educational data. So I select out those observations where the variable *Educational attainment of first owner* (EDUC1) is equal to something other than NA.
+
+```{r no nas in education}
+SBO_PUMS_1STOWNER_NO_NAs <- subset(SBO_PUMS_1STOWNER50, !(is.na(SBO_PUMS_1STOWNER50$EDUC1)))
+View(SBO_PUMS_1STOWNER_NO_NAs)
+```
+
+That gives me a data frame with 1.4 million observations for analysis.
+
+EDUC1 is an ordinal variable with values ranging from 0 to 7. The values, standing for the highest level of educational attainment reported by the business owner, mean:
+  0 not reported
+  1 less than a high school diploma
+  2 high school diploma
+  3 technical school
+  4 some college
+  5 associate's degree
+  6 bachelor's degree
+  7 master's degree or greater
+  
+  SBO PUMS Code | Meaning
+  ------------- | -------
+  0             | not reported
+  1             | less than a high school diploma
+  2             | high school diploma
+  3             | technical school
+  4             | some college
+  5             | associate's degree
+  6             | bachelor's degree
+  7             | master's degree or higher
+  
+I can classify this more simply:
+  "Low skill" (less than a high school diploma)
+  "Average skill" (high school diploma, technical college, or associate's degree)
+  "High skill" (bachelor's degree or higher)
+  
+Before then I'm going to do one more thing: take out all the observations where EDUC1 = 0, i.e. no information about the owner's educational attainment was reported.
+
+```{r full education information}
+SBO_PUMS_1STOWNER_ALL_REPORT <- subset(SBO_PUMS_1STOWNER_NO_NAs, SBO_PUMS_1STOWNER_NO_NAs$EDUC1 != 0)
+View(SBO_PUMS_1STOWNER_ALL_REPORT)
+```
+
+Now I have approximately 1.2 million observations. If I run the table command on the new data frame, I can see that there are no 0 values for EDUC1.
+
+```{r raw sector and education table}
+table(SBO_PUMS_1STOWNER_ALL_REPORT$SECTOR, SBO_PUMS_1STOWNER_ALL_REPORT$EDUC1)
+```
+
+Now we have something to actually work with.
+
+Here's what I'd like to do:
+1. Make a new table where the independent variable is industry (by name, not two-digit NAICS code) and the dependent variable is highest level of educational attainment.
+2. Create a new data frame which collapses the educational-attainment data into "low skill," "average skill," and "high skill."
+3. Chart both data frames.
+4. Use statistical tests to see if there is any sort of correlation between a particular industry and educational attainment. (Industry is a nominal variable and educational attainment is an ordinal one.) 5. Decide what measure of association to use for the statistical test.
+
+Given that I have a nominal and an ordinal variable, I'm going to fudge a bit and test the ordinal variable (educational attainment) as if it's nominal. Then I conduct a chi-square test on the two variables:
+
+```{r chi-square}
+test_table <- table(SBO_PUMS_1STOWNER_NO_NAs$SECTOR, SBO_PUMS_1STOWNER_NO_NAs$EDUC1)
+chisq.test(test_table)
+```
+
+The results give a p-value far below the significance level of .05, so I can say that educational attainment is not randomly distributed but does, in fact, vary by industry.
+
+While I'm messing around with the data, I'll get the totals for each reported level of educational attainment:
+
+```{r educational totals}
+all_industries_education <- as.data.frame(tapply(SBO_PUMS_1STOWNER_ALL_REPORT$SECTOR, SBO_PUMS_1STOWNER_ALL_REPORT$EDUC1, sum))
+rownames(all_industries_education) <- c("Less than High School", "High School Diploma", "Technical School", "Some College", "Associate's Degree", "Bachelor's Degree", "Master's Degree or Higher")
+colnames(all_industries_education) <- "Number of Owners Reporting"
+```
+
+Now I'm going to take the educational data by industry, make it a data frame, and relabel things.
+
+```{r heart of the matter}
+education_by_industry <- as.data.frame.matrix(table(SBO_PUMS_1STOWNER_ALL_REPORT$SECTOR, SBO_PUMS_1STOWNER_ALL_REPORT$EDUC1))
+colnames(education_by_industry) <- c("Less than High School", "High School Diploma", "Technical School", "Some College", "Associate's Degree", "Bachelor's Degree", "Master's Degree or Higher")
+rownames(education_by_industry) <- c("Agriculture, Forestry, Fishing, and Hunting", "Mining", "Utilities", "Construction", "Manufacturing", "Wholesale Trade", "Retail Trade", "Transportation and Warehousing", "Information", "Finance and Insurance", "Real Estate", "Professional, Scientific, and Technical Services", "Management of Companies and Enterprises", "Administrative and Support and Waste Management and Remediation Services", "Educational Services", "Health Care and Social Assistance", "Arts, Entertainment, and Recreation", "Accommodation and Food Services", "Other Services (except Public Administration)", "Not Classified")
+```
+
+At this point I ported the data over to Excel so I could play with it some more in a manner I'm used to.
+
+It looks like what I need to do is collapse the categories further (so create a column that is "High School or Less" which is the sum of "Less than High School" and "High School Diploma") to make the graph more readable, calculate percentages, and then prepare two graphs and/or charts -- one for "lower-skill" industries (HS diploma or less) and one for "high-skill" industries (bachelor's degree or more). 
+
+*10/19/16*: The first thing I do is to create a new data frame with three, not seven, categories of educational attainment: high school diploma or lower; associate's degree or lower; bachelor's degree or higher.
+
+```{r educational categories collapsed}
+education_categories_collapsed <- cbind(education_by_industry[1] + education_by_industry[2], education_by_industry[3] + education_by_industry[4] + education_by_industry[5], education_by_industry[6] + education_by_industry[7])
+colnames(education_categories_collapsed) <- c("High School Diploma or Lower", "Associate's Degree or Lower", "Bachelor's Degree or Higher")
+View(education_categories_collapsed)
+```
+
+[Sam Firke's janitor package](https://cran.r-project.org/web/packages/janitor/index.html) will calculate percentages nicely, but its ns-to-percents function excludes the first column of data, so I've got to do a little manipulation before I can use it.
+
+```{r messy manipulation to get percentages}
+education_collapsed_percents <- ns_to_percents(cbind(rownames(education_categories_collapsed), education_categories_collapsed))
+```
+
