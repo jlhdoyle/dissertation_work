@@ -1,0 +1,30 @@
+---
+title: "Double-Checking Sample MSAs"
+author: "Jessica L. H. Doyle"
+date: "November 4, 2016"
+output: html_document
+---
+
+In previous work I've been using a sample size of 148 MSAs. I now want to reload the 2007 and 2012 SBO data to make sure that I haven't inadvertently left out any MSAs that might have the proper data on Latino-owned businesses I'll need for my dissertation.
+
+```{r 2007_re_filtering}
+SBO2007_all <- read.csv("/home/jessica/Dropbox/dissertation/data/data_from_Fei/SBO_2007/2007_SBO_00CSA01_by_MSA/SBO_2007_00CSA01_with_ann.csv", as.is = TRUE)
+SBO2007_latino <- subset(SBO2007_all, ETH_GROUP.id == "020")
+SBO2007_latino_filtered <- subset(SBO2007_latino, FIRMALL != "S" & FIRMPDEMP != "S" & PAYANN != "S")
+SBO2007_latino_filtered <- subset(SBO2007_latino, NAICS.id == "00" & SEX.id == "001" & RACE_GROUP.id == "00" & FIRMALL != "S" & FIRMPDEMP != "S" & PAYANN != "S")
+SBO2007_latino_filtered <- subset(SBO2007_latino_filtered, FIRMNOPD != "S")
+SBO2007_latino_filtered <- subset(SBO2007_latino_filtered, PAYANN != "D")
+```
+
+That gives me 172 observations from 2007.
+
+The problem is, I also need to check whether I have sufficient data to measure "high-skills" industries.
+
+```{r high_skills}
+SBO_high_skills_latino <- subset(SBO2007_latino, NAICS.id == "52(604)" | NAICS.id == "53" | NAICS.id == "51" | NAICS.id == "54")
+View(SBO_2007_high_skills_filtered)
+SBO_2007_high_skills_filtered <- subset(SBO_high_skills_latino, FIRMALL != "S" & FIRMPDEMP != "S" & PAYANN != "S")
+SBO_2007_high_skills_filtered <- subset(SBO_2007_high_skills_filtered, EMP != "a" & EMP != "b")
+```
+
+This leaves me with a total of 200 observations (not every MSA has observations for each industry). I think what I'm going to have to do next is add the firm numbers together and do the evaluation on that. I think I'll need to use "apply" to coerce the data into numeric form, pull out the NAs, and add it all together.

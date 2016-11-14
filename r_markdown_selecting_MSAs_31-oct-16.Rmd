@@ -1,0 +1,98 @@
+---
+title: "Getting 2012 SBO Data for Selected MSAs"
+author: "Jessica L. H. Doyle"
+date: "October 31, 2016"
+output: html_document
+---
+
+I have 149 MSAs in my sample set for testing hypotheses about the performance of Latino-owned businesses during the Great Recession. Now I need to get the data from the Survey of Business Owners (SBO) for both the 2007 and 2012 editions. Since I'm not using every MSA in the SBO sample set, I need to select out my MSAs. This is to document how I did it.
+
+I'll work on getting the 2012 SBO data first. I need to load it with "as.is = TRUE", otherwise the information I want to use to join will be set as factors, rather than something join-able, in the data frame.
+
+```r{load_2012_SBO_data}
+SBO12_alldata <- read.csv("/home/jessica/Documents/dissertation_Orchid/data_storage/SBO_2012/SBO_2012_00CSA01_by_MSA/SBO_2012_00CSA01_with_ann.csv", as.is = TRUE) 
+```
+
+Then I load a separate table that has the names and unique identifiers of the MSAs I'm interested in (that I determined earlier by comparing the 2007 and 2012 data on Latino-owned businesses).
+
+```r{load_selected_msas}
+geoID2only <- read.csv("/home/jessica/Documents/dissertation_Orchid/calculations/msa_list_geoID2_only.csv", as.is = TRUE)
+```
+
+I can join these using the semi_join function in dplyr, but I need to make sure the classes match first. So I'm going to force the GEO.id2 column in my geoIDonly dataframe to be characters, then pull up the dplyr library and put the two together, keeping only those MSAs that show up in my selected set.
+
+```r{select_out}
+geoID2only$GEO.id2 <- as.character(geoID2only$GEO.id2)
+library(dplyr)
+selected_MSAs <-semi_join(SBO12_alldata, geoID2only, by = "GEO.id2")
+```
+
+The resulting dataset has 58,236 rows. To double-check that I've got the right number of MSAs, I'll do a subset that reduces the number of rows to one per MSA. 
+
+```r{checking_MSA_count}
+doublecheck <- subset(selected_MSAs, NAICS.id == "00" & SEX.id == "001" & ETH_GROUP.id == "001" & RACE_GROUP.id == "00")
+nrow(doublecheck)
+```
+
+The "doublecheck" dataset has 147 rows, which is not the right number of MSAs -- two fall out. One is Honolulu/Urban Honolulu and the other is Los Angeles. I'm going to have to collect those and add them in manually.
+
+```r{restore_la_and_honolulu}
+SBO12_la <- subset(SBO12_alldata, GEO.id2 == "31080")
+SBO12_honolulu <- subset(SBO12_alldata, GEO.id2 == "46520")
+MSAsplushonolulu <- rbind(selected_MSAs, SBO12_honolulu)
+MSAs_in_sample <- rbind(MSAsplushonolulu, SBO12_la)
+doublecheck2 <- subset(MSAs_in_sample, NAICS.id == "00" & SEX.id == "001" & ETH_GROUP.id == "001" & RACE_GROUP.id == "00")
+nrow(doublecheck2)
+```
+
+Since I'm going to need to work with this data in Excel eventually (if nothing else, the actual dissertation is going to be in MS Word), I'm going to port my 2012 data for my 149 sample MSAs out as a .csv file:
+
+```r{port_out_2012}
+write.csv(MSAs_in_sample, "/home/jessica/Documents/dissertation_Orchid/calculations/msas_sample_SBO2012.csv")
+```
+
+But before I finish with the 2012 SBO data, I should isolate a couple variables I'll highlight in my preliminary analysis writeup, namely differences in business patterns between Latino and non-Latino business owners. In the SBO coding under ethnic group (ETH_GROUP.id), the number 020 stands for Hispanic or Latino and the number 029 is for Not Hispanic or Latino. I'm also going to create an even smaller dataset, which shows aggregated numbers of all firms (designated as the number 00 under NAICS.id).
+
+```r{for_preliminary_analysis}
+MSAs_latino_or_not <- subset(MSAs_in_sample, ETH_GROUP.id == "020" | ETH_GROUP.id == "029")
+write.csv(MSAs_latino_or_not, "/home/jessica/Documents/dissertation_Orchid/calculations/msas_sample_SBO2012_latino_or_not.csv")
+MSAs_latino_or_not_all_firms_aggregated <- subset(MSAs_latino_or_not, NAICS.id == "00")
+nrow(MSAs_latino_or_not_all_firms_aggregated) == 2 * (nrow(doublecheck2))
+write.csv(MSAs_latino_or_not_all_firms_aggregated, "/home/jessica/Documents/dissertation_Orchid/calculations/msas_sample_SBO2012_latino_or_not_all_firms_aggregated.csv")
+```
+
+In that block the nrow command confirms that I have 2 * 149 rows, i.e. two rows (one for Hispanic or Latino, one for not Hispanic or Latino) for every MSA in the sample.
+
+Now I'm going to wipe my environment and start fresh.
+
+```r{clean_slate}
+rm(list=ls())
+```
+
+And then load the 2007 SBO data and repeat the process of selecting it down.
+
+```r{select_2007_MSAs}
+SBO_2007 <- read.csv("/home/jessica/Documents/dissertation_Orchid/data_storage/SBO 2007/2007_SBO_00CSA01_by_MSA/SBO_2007_00CSA01_with_ann.csv", as.is = TRUE)
+selected_MSAs_2007 <- semi_join(SBO_2007, geoID2only, by = "GEO.id2")
+doublecheck <- subset(selected_MSAs_2007, NAICS.id == "00" & SEX.id == "001" & ETH_GROUP.id == "001" & RACE_GROUP.id == "00")
+nrow(doublecheck)
+```
+
+This time the missing one is for the Sarasota-Bradenton MSA, so let's get that data and add it in. This time -- drum roll, please -- I will actually use regexpr correctly.
+
+```r{sarasota}
+sarasota <- subset(SBO_2007, regexpr("Sarasota", SBO_2007$GEO.display.label) == TRUE)
+selected_MSAs_2007_all <- rbind(selected_MSAs_2007, sarasota)
+```
+
+And now I'm going to port it and select it down, just like I did with the 2012 SBO data.
+
+```r{2007_SBO_sample_out_to_csv}
+write.csv(selected_MSAs_2007_all, "/home/jessica/Documents/dissertation_Orchid/calculations/msas_sample_SBO2007.csv")
+MSAs_latino_or_not <- subset(selected_MSAs_2007_all, ETH_GROUP.id == "020" | ETH_GROUP.id == "029")
+write.csv(MSAs_latino_or_not, "/home/jessica/Documents/dissertation_Orchid/calculations/msas_sample_SBO2007_latino_or_not.csv")
+MSAs_latino_or_not_all_firms_aggregated <- subset(MSAs_latino_or_not, NAICS.id == "00")
+write.csv(MSAs_latino_or_not_all_firms_aggregated, "/home/jessica/Documents/dissertation_Orchid/calculations/msas_sample_SBO2007_latino_or_not_all_firms_aggregated.csv")
+```
+
+And now I have my relevant data for the 2007 and 2012 SBO, but I'm going to switch over to LibreOffice/Excel to make it look good for my preliminary analysis writeup.

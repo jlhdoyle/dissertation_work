@@ -1,0 +1,34 @@
+---
+title: "Getting Population Data from ACS for Selected MSAs"
+author: "Jessica L. H. Doyle"
+date: "November 2, 2016"
+output: html_document
+---
+
+This document is for detailing the steps I used to obtain population counts from American Community Survey (hereafter ACS) data for the sample set of 149 MSAs being used in my dissertation research.
+
+The first thing I did was load the required ACS data, previously downloaded from the Census website. I took the 5-year ACS data, Hispanic or Latino Origin by MSA, using [this query](http://factfinder.census.gov/bkmk/table/1.0/en/ACS/12_5YR/B03003/0100000US.31000.005) and saved the result to my hard drive. As I did with the SBO data, I'll then filter it so that I have a table with only my 149 sample MSAs.
+
+```r{get_acs_2012_data}
+ACS_2012_B03003 <- read.csv("/home/jessica/Documents/dissertation_Orchid/data_storage/ACS/ACS_12_5YR_B03003/ACS_12_5YR_B03003_with_ann.csv", as.is = TRUE)
+library(dplyr)
+ACS_2012_filtered <- semi_join(ACS_2012_B03003, geoID2only, by = "GEO.id2")
+write.csv(ACS_2012_filtered, "/home/jessica/Documents/dissertation_Orchid/calculations/MSA_population_ACS_2012_B03003.csv")
+```
+
+The geoID2only dataset was previously created to give me the identification numbers stored under "GEO.id2" for each MSA, for only my 149 sample MSAs.
+
+In order to make sure to compare the same dataset, I chose B01003 for both the 2005-07 and 2010-12 periods.
+
+```r{apples_to_apples}
+ACS_2007_B01003 <- read.csv("/home/jessica/Documents/dissertation_Orchid/data_storage/ACS/ACS_07_3YR_B01003_by_MSA/ACS_07_3YR_B01003_with_ann.csv", as.is = TRUE)
+ACS_2007_B01003_filtered <- semi_join(ACS_2007_B01003, geoID2only, by = "GEO.id2")
+write.csv(ACS_2007_B01003_filtered, "/home/jessica/Documents/dissertation_Orchid/calculations/msa_total_population_2007_ACS.csv")
+ACS_2012_B01003 <- read.csv("/home/jessica/Documents/dissertation_Orchid/data_storage/ACS/ACS_12_3YR_B01003_by_MSA/ACS_12_3YR_B01003_with_ann.csv", as.is = TRUE)
+ACS_2012_B01003_filtered <- semi_join(ACS_2012_B01003, geoID2only, by = "GEO.id2")
+write.csv(ACS_2012_B01003_filtered, "/home/jessica/Documents/dissertation_Orchid/calculations/msa_total_population_2012_ACS_B01003.csv")
+```
+
+
+
+

@@ -1,0 +1,46 @@
+---
+title: "Calculating Latino Ownership in High-Skills Industries"
+author: "Jessica L. H. Doyle"
+date: "November 6, 2016"
+output: html_document
+---
+
+Today's task is to determine how many Latino-owned businesses in my sample MSAs are in high-skills industries. I've already calculated, from the 2007 SBO PUMS, which industries are "high-skills":
+* wholesale trade
+* information
+* finance and insurance
+* real estate
+* professional, scientific, and technical services
+* management of companies and enterprises
+* educational services
+* health care and social assistance
+* arts, entertainment, and recreation
+
+So first I'm going to load in the 2007 SBO and select only Latino-owned businesses in those industries.
+
+```{r load latino high-skills data}
+SBO_2007_all <- read.csv("/home/jessica/Documents/dissertation_Orchid/data_storage/SBO 2007/2007_SBO_00CSA01_by_MSA/SBO_2007_00CSA01_with_ann.csv")
+View(SBO_2007_all)
+SBO_2007_Latino <- subset(SBO_2007_all, SEX.id == "001" & ETH_GROUP.id == "020" & RACE_GROUP.id == "00")
+SBO_2007_Latino_highskills <- subset(SBO_2007_Latino, NAICS.display.label == "Wholesale trade" | NAICS.display.label == "Information" | NAICS.display.label == "Finance and insurance(604)" | NAICS.display.label == "Real estate and rental and leasing" | NAICS.display.label == "Professional, scientific, and technical services" | NAICS.display.label == "Educational services" | NAICS.display.label == "Health care and social assistance" | NAICS.display.label == "Arts, entertainment, and recreation")
+```
+
+This gives me a total of 1230 observations. The problem is, many of the observations won't have data in a particular category (will be marked "S" or "D" in the data). I'm going to pull those out.
+
+```{r filtering}
+SBO_2007_Latino_highskills_filtered <- subset(SBO_2007_Latino_highskills, FIRMALL != "S")
+```
+
+That takes the 1230 observations down to 543.
+
+Now I'm going to use the magic of dplyr (kicking out plyr, as described [here](http://stackoverflow.com/questions/21653295/dplyr-issues-when-using-group-bymultiple-variables) to summarize the industry counts by MSA.
+
+```{r summarize those babies}
+library(dplyr)
+detach(package:plyr) 
+firmall_only <- select(SBO_2007_Latino_highskills_filtered, GEO.display.label, NAICS.display.label, FIRMALL)
+firmall_only[, 3] <- as.numeric(as.character(firmall_only[, 3])) # you have to do this because "sum" won't work on factors
+firmsum <- summarise(group_by(firmall_only, GEO.display.label), indsum = sum(FIRMALL))
+```
+
+Great! Only the problem is, I didn't filter out this list by my sample MSA list.
